@@ -23,11 +23,20 @@
     transition: 0.3s;
     border: 0px inset #1C6EA4;
     border-radius: 8px;
+    text-decoration: none;
     overflow: hidden; /* Keeps image within border radius */
 }
 
 .item:hover {
     box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+}
+
+.item-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .item-image {

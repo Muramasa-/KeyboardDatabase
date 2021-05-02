@@ -1,15 +1,19 @@
-from keebs import app, SearchForm, db, helper
+from keebs import app, SearchForm, db
 from keebs.forms import KeyboardForm, AddCartForm
-from keebs.helper import to_img64, add_to_cart, check_session, purge_cart
+from keebs.helper import to_img64, update_cart, purge_cart, get_cart
 from keebs.models import Keyboard
-from flask import render_template, flash, request, session
-
+from flask import render_template, flash, request
 
 def render(template, **kwargs):
+    query = db.session.query(Keyboard.brand).distinct()
+    brands = [b.brand for b in query.all()]
+
     search_form = SearchForm()
     if search_form.validate_on_submit():
-        pass
-    return render_template(template, search_form=search_form, **kwargs)
+        items = Keyboard.query.filter(Keyboard.name.contains(search_form.input.data)).all()
+        return render_template("items.jinja", search_form=search_form, brands=brands, items=items)
+    else:
+        return render_template(template, search_form=search_form, brands=brands, **kwargs)
 
 @app.route("/")
 def index():
@@ -24,9 +28,12 @@ def about():
 def gallery():
     return render("gallery.jinja", items=Keyboard.query.all())
 
-@app.route("/inventory")
-def inventory():
-    return render("inventory.jinja", items=Keyboard.query.all())
+@app.route("/inventory", methods=["GET", "POST"])
+@app.route("/inventory/<brand>", methods=["GET", "POST"])
+def inventory(brand=None):
+    if brand:
+        return render("items.jinja", items=Keyboard.query.filter_by(brand=brand).all())
+    return render("items.jinja", items=Keyboard.query.all())
 
 @app.route("/item/<int:item_id>", methods=["GET", "POST"])
 def item(item_id):
@@ -35,7 +42,7 @@ def item(item_id):
 
     # If we are posting to this route and the cart form is valid, push item into the session cart
     if request.method == "POST" and cart_form.validate_on_submit():
-        add_to_cart(item)
+        update_cart(item, cart_form.quantity.data)
     return render("item.jinja", item=item, cart_form=cart_form)
 
 @app.route("/insert", methods=["GET", "POST"])
@@ -44,7 +51,8 @@ def insert():
     if form.validate_on_submit():
         img64_small = to_img64(request.files["image"], 200)
         img64_large = to_img64(request.files["image"], 600)
-        kb = Keyboard(brand=form.brand.data, name=form.name.data, model=form.model.data, switch=form.switch.data, desc=form.desc.data, quantity=form.quantity.data, price=form.price.data, img_small=img64_small, img_large=img64_large)
+        kb = Keyboard(img_small=img64_small, img_large=img64_large)
+        form.populate_obj(kb)
         db.session.add(kb)
         db.session.commit()
         flash(f"Submitted {form.name.data}!")
@@ -52,10 +60,7 @@ def insert():
 
 @app.route("/cart")
 def cart():
-    entries = {}
-    for x in session["cart"].keys():
-        entries[x] = {"item": Keyboard.query.get_or_404(x), "quantity": session["cart"][x]["quantity"]}
-    return render("cart.jinja", entries=entries.values())
+    return render("cart.jinja", items=get_cart())
 
 @app.route("/update/<int:item_id>", methods=["GET", "POST"])
 def update(item_id):
@@ -67,20 +72,10 @@ def update(item_id):
         if form.validate_on_submit():
             form.populate_obj(item)
             if form.image.data:
-                item.img_small = helper.to_img64(request.files["image"], 200)
-                item.img_large = helper.to_img64(request.files["image"], 600)
+                item.img_small = to_img64(request.files["image"], 200)
+                item.img_large = to_img64(request.files["image"], 600)
             db.session.add(item)
             db.session.commit()
             print("return inv")
             return inventory()
     return render("update.jinja", title="Update", item=item, form=form)
-
-@app.route("/search")
-def search():
-    query = request.args("search")
-    form = SearchForm()
-    # if form.validate_on_submit():
-    #     flash(f"Searching for {form.search.data}!")
-    #     #return redirect(url_for("home"))
-    # print(form.__dict__)
-    return render("search.jinja", title="search", form=form, query=query)

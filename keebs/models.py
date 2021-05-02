@@ -1,6 +1,3 @@
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship
-
 from keebs import db
 
 class Keyboard(db.Model):

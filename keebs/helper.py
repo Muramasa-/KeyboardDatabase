@@ -3,6 +3,8 @@ from PIL import Image
 from io import BytesIO
 from flask import session
 
+from keebs.models import Keyboard
+
 def to_img64(file, size):
     #Create image and resize to smaller size if over the threshold
     image = Image.open(file)
@@ -21,20 +23,29 @@ def to_img64(file, size):
     return img64.decode("ascii")
 
 def check_session(key, obj):
-    # Make sure a key value pair exists in session for the passed key
+    #Make sure a key value pair exists in session for the passed key
     if key not in session:
         session[key] = obj
 
-def add_to_cart(item):
+def update_cart(item, quantity):
     #Check if our cart key is in the session
     check_session("cart", {})
 
+    #If exists, increment it, otherwise, assign it
     if str(item.id) in session["cart"]:
-        session["cart"][str(item.id)]["quantity"] += 1
+        session["cart"][str(item.id)] += 1
     else:
-        session["cart"][str(item.id)] = {"item": "x", "quantity": 1}
+        session["cart"][str(item.id)] = quantity
 
+    #Mark the session as modified so it updates for the user
     session.modified = True
+
+def get_cart():
+    check_session("cart", {})
+    items = []
+    for id in session["cart"]:
+        items.append({"item": Keyboard.query.get_or_404(id), "quantity": session["cart"][id]})
+    return items
 
 def purge_cart():
     session["cart"] = {}

@@ -1,0 +1,17 @@
+{% extends "layout.jinja" %}
+{% block content %}
+    {% for i in items %}
+        <div class="item">
+            <a class="item-link" href="{{ url_for('item', item_id=i.id) }}">
+                <div class="item-image">
+                    <img class="item-img" src="data:;base64,{{i.img_small}}" alt="{{i.model}} Keyboard">
+                </div>
+                <div class="item-details">
+                    <h4 class="item-title">{{ i.name }}</h4>
+                    <h4>${{i.price}}</h4>
+                    {# <p>{{ i.desc }}</p> #}
+                </div>
+            </a>
+        </div>
+    {% endfor %}
+{% endblock content %}
